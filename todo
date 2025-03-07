@@ -1,0 +1,6 @@
+- [x] Simple Arithmetic evaluator
+- [x] Variable definition and usage
+- [ ] Function definition (Lambda) and Application
+- [ ] Conditional expression
+- [ ] Sequential Execution using "begin"
+- [ ] Recursion
