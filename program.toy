@@ -1,0 +1,62 @@
+; Define the factorial function using our language constructs.
+; (def factorial 
+;  (fn (n)
+;    (if (= n 0)
+;        1
+;        (* n (factorial (- n 1))))))
+
+; Call the factorial function with 5 and print the result.
+; (print (factorial 5))
+
+
+
+1
+"krishna"
+; "krishna"
+(+ 1 2 3)
+(- 100 1)
+(* 2 4)
+
+
+(+ 1 (* 2 4) 10)
+
+
+; Simple arithmetic
+(+ 1 2 3 4 5)
+
+; Variable definition and usage
+(define x 5)
+(+ x 5)
+
+; Function definition (lambda) and Application
+(define square
+    (lambda (x)
+        (* x x)
+    )
+)
+(square 6)
+
+; Conditional expression
+(define x 3)
+(if (> x 5)
+    "Greater than five"
+    "Not greater than five"
+)
+
+; Sequential execution using `begin`
+(begin
+    (define a 5)
+    (define b 7)
+    (+ a b)
+)
+
+; Recursion: factorial function
+(define fact
+    (lambda (n)
+        (if (<= n 1)
+            1
+            (* n fact(- n 1)) 
+        ) 
+    )
+)
+(fact 5)
