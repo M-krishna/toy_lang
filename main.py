@@ -21,6 +21,7 @@ class TokenType(Enum):
     KEYWORD = "keyword"
     WHITESPACE = "whitespace"
     SEMICOLON = "semicolon"
+    DEFINE = "define"
     EOF = "eof"
 
 
@@ -272,6 +273,7 @@ class Evaluator:
             "/": lambda a, *args: self.divide(a, *args)
         }
         self.debug: int = debug
+        self.env: dict = {}
 
     def evaluate(self, ast: Node, depth: int = 0):
         indent = " " * depth
@@ -280,6 +282,12 @@ class Evaluator:
                 print(f"{indent}Evaluting atom: {ast}")
             if ast.type in [TokenType.NUMBER.name, TokenType.STRING.name]:
                 return ast.value
+            elif ast.type == TokenType.IDENTIFIER.name:
+                # Check the program environment to see if its present or not
+                value = self.env.get(ast.value, None)
+                if not value:
+                    raise Exception(f"{ast.value} is not defined")
+                return value
             else:
                 # It must be an operator (for now)
                 # Check if the operator function is available in operators dictionary
@@ -296,8 +304,23 @@ class Evaluator:
             if len(ast.list_elements) >= 2 and isinstance(ast.list_elements[0], AtomNode) and ast.list_elements[0].value == "'":
                 # simply return the quoted expression value without evaluating it
                 return ast.list_elements[1:]
-            func = self.evaluate(ast.list_elements[0])
-            args = [self.evaluate(arg) for arg in ast.list_elements[1:]]
+            elif len(ast.list_elements) >= 2 and isinstance(ast.list_elements[0], AtomNode) and ast.list_elements[0].value == TokenType.DEFINE.value:
+                # check whether it has 2 arguments
+                rest = ast.list_elements[1:]
+                if not len(rest) == 2:
+                    raise SyntaxError(f"Identifier or Expression missing for define")
+                # If the first argument is not an identifier, throw an error
+                first_arg: AtomNode = rest[0]
+                if not first_arg.type == TokenType.IDENTIFIER.name:
+                    raise SyntaxError(f"Expected an identifier, got {first_arg}")
+                # Evaluate the second argument
+                result = self.evaluate(rest[1])
+                # Save the result to the environment
+                self.env.update({ first_arg.value: result })
+                return result
+            else:
+                func = self.evaluate(ast.list_elements[0])
+                args = [self.evaluate(arg) for arg in ast.list_elements[1:]]
             
             if self.debug:
                 print(f"{indent}Applying function: {func.__name__ if hasattr(func, '__name__') else func} to args: {args}")
@@ -335,8 +358,10 @@ class Evaluator:
 ############## END OF EVALUATOR #########
 arguments = sys.argv
 class Repl:
-    def __init__(self):
+    def __init__(self, debug: int = 0):
         self.program_contents: str = ""
+        self.debug = debug
+        self.evaluator = Evaluator(debug=debug)
 
     def run_file(self, file_path: str) -> None:
         with open(file_path, "r") as f:
@@ -365,9 +390,8 @@ class Repl:
         parser = Parser(lexer.get_tokens())
         parser.parse_tokens()
 
-        evaluator = Evaluator()
         for node in parser.get_ast():
-            result = evaluator.evaluate(node)
+            result = self.evaluator.evaluate(node)
             print(result)
 
 
