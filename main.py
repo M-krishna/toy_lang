@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import sys
+from datetime import datetime
 from enum import Enum
 from typing import List, Callable
 
@@ -57,6 +59,7 @@ class Lexer:
             "*": lambda : self.add_token(TokenType.STAR.name, c),
             "+": lambda : self.add_token(TokenType.PLUS.name, c),
             "-": lambda : self.add_token(TokenType.MINUS.name, c),
+            "'": lambda : self.add_token(TokenType.QUOTE.name, c),
             ";": lambda : self.handle_semicolon(),
         }
 
@@ -101,7 +104,7 @@ class Lexer:
         if self.is_at_end():
             raise SyntaxError(f"Unterminated string at line {self.line}")
 
-        # consume the closing quote
+        # consume the closing quote(")
         self.advance()
         
         text: str = self.source[self.start_position+1:self.current_position-1]
@@ -196,6 +199,8 @@ class Parser:
 
         if current_token.tt in self.ATOM_LIST:
             return self.parse_atom()
+        elif current_token.tt == TokenType.QUOTE.name:
+            return self.parse_quote()
         elif current_token.tt == TokenType.LPAREN.name:
             return self.parse_application()
         else:
@@ -208,6 +213,14 @@ class Parser:
         )
         self.advance() # consume the token
         return atom_node
+
+    def parse_quote(self):
+        self.advance() # consume the quote(')
+        quoted_expr = self.parse_expressions() # Parse the following expression
+        return ListNode([
+            AtomNode(TokenType.QUOTE.name, "'"),
+            quoted_expr
+        ])
 
     def parse_application(self):
         # Application is of type `( expressions )`
@@ -278,6 +291,11 @@ class Evaluator:
             # we can safely assume that the 1st element is always an operator
             if self.debug:
                 print(f"{indent}Evaluating list: {ast}")
+
+            # Check if its a quoted(') expression.
+            if len(ast.list_elements) >= 2 and isinstance(ast.list_elements[0], AtomNode) and ast.list_elements[0].value == "'":
+                # simply return the quoted expression value without evaluating it
+                return ast.list_elements[1:]
             func = self.evaluate(ast.list_elements[0])
             args = [self.evaluate(arg) for arg in ast.list_elements[1:]]
             
@@ -297,7 +315,7 @@ class Evaluator:
             result += int(v)
         return result
             
-    def subtraction(self, a, args):
+    def subtraction(self, a, *args):
         a = int(a)
         if not args:
             return -a
@@ -309,34 +327,57 @@ class Evaluator:
             result *= int(n)
         return result
 
-    def divide(self, a, args):
+    def divide(self, a, *args):
         if args:
             return a / self.multiply(*args)
         else:
             return a
 ############## END OF EVALUATOR #########
-
+arguments = sys.argv
 class Repl:
     def __init__(self):
         self.program_contents: str = ""
 
-    def read(self, file_path: str):
-        with open(file_path) as f:
-            self.program_contents = f.read()
+    def run_file(self, file_path: str) -> None:
+        with open(file_path, "r") as f:
+            file_contents = f.read()
+        self.program_contents = file_contents
+        self.run(self.program_contents)
 
-    def run(self):
-        lexer = Lexer(source=self.program_contents)
+    def run_prompt(self):
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"Toy Lang 0.0.1 (default, {now})")
+        print("Type (exit) to quit the console")
+        while True:
+            print(">>> ", end="", flush=True)
+            line = sys.stdin.readline()
+            if not line: continue
+            if line.strip() == "(exit)": sys.exit(0)
+            try:
+                self.run(line)
+            except Exception as e:
+               print(f"{e}") 
+
+    def run(self, source) -> None:
+        lexer = Lexer(source)
         lexer.scan_tokens()
 
         parser = Parser(lexer.get_tokens())
         parser.parse_tokens()
 
-        evaluator = Evaluator(debug=1)
+        evaluator = Evaluator()
         for node in parser.get_ast():
             result = evaluator.evaluate(node)
             print(result)
 
+
 if __name__ == "__main__":
+    arg_len = len(arguments)
     repl = Repl()
-    repl.read("./program.toy")
-    repl.run()
+    if arg_len > 2:
+        print(f"Usage: ./main.py [script]")
+        sys.exit(64)
+    elif arg_len == 2:
+        repl.run_file(arguments[1])
+    else:
+        repl.run_prompt()

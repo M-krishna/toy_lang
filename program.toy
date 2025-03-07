@@ -11,7 +11,7 @@
 
 
 1
-"krishna"
+"krishna loves cheeks"
 ; "krishna"
 (+ 1 2 3)
 (- 100 1)
@@ -22,14 +22,14 @@
 
 
 ; Simple arithmetic
-(+ 1 2 3 4 5)
+;(+ 1 2 3 4 5)
 
 ; Variable definition and usage
-(define x 5)
-(+ x 5)
+;(define x 5)
+;(+ x 5)
 
 ; Function definition (lambda) and Application
-(define square
+;(define square
     (lambda (x)
         (* x x)
     )
@@ -37,26 +37,26 @@
 (square 6)
 
 ; Conditional expression
-(define x 3)
-(if (> x 5)
+;(define x 3)
+;(if (> x 5)
     "Greater than five"
     "Not greater than five"
 )
 
 ; Sequential execution using `begin`
-(begin
+;(begin
     (define a 5)
     (define b 7)
     (+ a b)
 )
 
 ; Recursion: factorial function
-(define fact
+;(define fact
     (lambda (n)
-        (if (<= n 1)
+;        (if (<= n 1)
             1
             (* n fact(- n 1)) 
         ) 
     )
 )
-(fact 5)
+;(fact 5)
