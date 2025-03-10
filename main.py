@@ -21,6 +21,7 @@ class TokenType(Enum):
     KEYWORD = "keyword"
     WHITESPACE = "whitespace"
     SEMICOLON = "semicolon"
+    UNDERSCORE = "UNDERSCORE"
     DEFINE = "define"
     EOF = "eof"
 
@@ -61,6 +62,7 @@ class Lexer:
             "+": lambda : self.add_token(TokenType.PLUS.name, c),
             "-": lambda : self.add_token(TokenType.MINUS.name, c),
             "'": lambda : self.add_token(TokenType.QUOTE.name, c),
+            "_": lambda : self.add_token(TokenType.UNDERSCORE.name, c),
             ";": lambda : self.handle_semicolon(),
         }
 
@@ -122,7 +124,7 @@ class Lexer:
         return (c >= "0") and (c <= "9")
 
     def is_alpha(self, c: str) -> bool:
-        return (c >= "a" and c <= "z") or (c >= "A" and c <= "Z")
+        return (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or c == "_"
 
     def is_alphanumeric(self, c: str) -> bool:
         return self.is_digit(c) or self.is_alpha(c)
