@@ -26,6 +26,7 @@ class TokenType(Enum):
     COMMA = "comma"
     DEFINE = "define"
     LAMBDA = "lambda"
+    BEGIN = "begin"
     EOF = "eof"
 
 
@@ -135,6 +136,8 @@ class Lexer:
         text: str = self.source[self.start_position:self.current_position]
         if text == TokenType.LAMBDA.value:
             self.add_token(TokenType.LAMBDA.name, text)
+        elif text == TokenType.BEGIN.value:
+            self.add_token(TokenType.BEGIN.name, text)
         else:
             self.add_token(TokenType.IDENTIFIER.name, text)
 
@@ -240,7 +243,6 @@ class ClosureNode(Node):
     def __repr__(self):
         return f"ClosureNode({self.params}, {self.body}, env={self.env.bindings})"
 
-
 class BeginNode(Node):
     def __init__(self, expressions: List):
         self.expressions: List = expressions
@@ -309,6 +311,11 @@ class Parser:
         if current_token.lexeme == TokenType.LAMBDA.value:
             return self.parse_lambda()
 
+        # Check if its a begin or not
+        # If its a begin, then return a BeginNode
+        if current_token.lexeme == TokenType.BEGIN.value:
+            return self.parse_begin()
+
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
             node: Node = self.parse_expressions()
@@ -348,7 +355,7 @@ class Parser:
 
         # Consume the closing parenthesis
         if not self.match(TokenType.RPAREN.name):
-            raise SyntaxError(f"Expected '(', got: {self.peek()}")
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
         return LambdaNode(params, BeginNode(body_expression))
     
     def parse_params(self):
@@ -360,9 +367,22 @@ class Parser:
             params.append(token)
         
         if not self.match(TokenType.RPAREN.name):
-            raise SyntaxError(f"Expected '(', got: {self.peek()}")
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
         
         return params
+
+    def parse_begin(self):
+        self.advance() # consume the begin token
+
+        expressions = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            expressions.append(self.parse_expressions())
+        
+        # Consume the closing paranthesis
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return BeginNode(expressions=expressions)
+
 
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
@@ -395,7 +415,8 @@ class Evaluator:
             "+": lambda *args: self.addition(*args),
             "-": lambda a, *args: self.subtraction(a, *args),
             "*": lambda *args: self.multiply(*args),
-            "/": lambda a, *args: self.divide(a, *args)
+            "/": lambda a, *args: self.divide(a, *args),
+            "display": lambda a: self.display(a)
         }
         self.debug: int = debug
         # Global environment
@@ -499,6 +520,10 @@ class Evaluator:
             return a / self.multiply(*args)
         else:
             return a
+
+    def display(self, a) -> None:
+        print(a, flush=True)
+
 ############## END OF EVALUATOR #########
 arguments = sys.argv
 class Repl:

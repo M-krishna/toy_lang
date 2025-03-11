@@ -43,8 +43,28 @@
 ((lambda (x)
     (begin
       (display x)
-      (* x x)))
- 6)
+      (* x x)
+    )
+ )
+6)
+
+;;;;;;;; START OF BEGIN CODE ;;;;;;;;;;;;
+(begin
+  (display "Hello, World!")
+  (+ 2 3 4))
+
+(begin
+  (define x 10)
+  (display x)
+  (* x 3))
+
+(define square_and_print
+  (lambda (x)
+    (begin
+      (display x)
+      (* x x))))
+(square_and_print 5)
+;;;;;;;; END OF BEGIN CODE ;;;;;;;;;;;;
 
 ; Conditional expression
 ;(define x 3)
