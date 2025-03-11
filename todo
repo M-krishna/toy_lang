@@ -2,5 +2,5 @@
 - [x] Variable definition and usage
 - [x] Function definition (Lambda) and Application
 - [ ] Conditional expression
-- [ ] Sequential Execution using "begin"
+- [x] Sequential Execution using "begin"
 - [ ] Recursion

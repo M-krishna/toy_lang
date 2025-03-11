@@ -6,6 +6,8 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Callable, Optional, Dict, Any
 
+arguments = sys.argv
+
 
 class TokenType(Enum):
     LPAREN = "lparen"
@@ -239,9 +241,6 @@ class ClosureNode(Node):
         new_env: Environment = Environment(bindings=dict(zip(self.params, args)), outer_scope=self.env)
         # Evaluate the body in the new environment
         return Evaluator().evaluate(self.body, env=new_env)
-
-    def __repr__(self):
-        return f"ClosureNode({self.params}, {self.body}, env={self.env.bindings})"
 
 class BeginNode(Node):
     def __init__(self, expressions: List):
@@ -525,7 +524,6 @@ class Evaluator:
         print(a, flush=True)
 
 ############## END OF EVALUATOR #########
-arguments = sys.argv
 class Repl:
     def __init__(self, debug: int = 0):
         self.program_contents: str = ""
