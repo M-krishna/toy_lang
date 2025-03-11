@@ -22,41 +22,51 @@
 
 
 ; Simple arithmetic
-;(+ 1 2 3 4 5)
+(+ 1 2 3 4 5)
 
 ; Variable definition and usage
-;(define x 5)
-;(+ x 5)
+(define x 5)
+(+ x 5)
+
+; Lambda function
+(lambda (x, x) (x * x))
 
 ; Function definition (lambda) and Application
-;(define square
+(define square
     (lambda (x)
         (* x x)
     )
 )
-(square 6)
+(square 9)
+
+
+((lambda (x)
+    (begin
+      (display x)
+      (* x x)))
+ 6)
 
 ; Conditional expression
 ;(define x 3)
 ;(if (> x 5)
-    "Greater than five"
-    "Not greater than five"
-)
+;    "Greater than five"
+;    "Not greater than five"
+;)
 
 ; Sequential execution using `begin`
 ;(begin
-    (define a 5)
-    (define b 7)
-    (+ a b)
-)
+;    (define a 5)
+;    (define b 7)
+;    (+ a b)
+;)
 
 ; Recursion: factorial function
 ;(define fact
-    (lambda (n)
+;    (lambda (n)
 ;        (if (<= n 1)
-            1
-            (* n fact(- n 1)) 
-        ) 
-    )
-)
+;            1
+;            (* n fact(- n 1)) 
+;        ) 
+;    )
+;)
 ;(fact 5)

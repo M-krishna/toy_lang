@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import sys
+import copy
 from datetime import datetime
 from enum import Enum
-from typing import List, Callable
+from typing import List, Callable, Optional, Dict, Any
 
 
 class TokenType(Enum):
@@ -21,8 +22,10 @@ class TokenType(Enum):
     KEYWORD = "keyword"
     WHITESPACE = "whitespace"
     SEMICOLON = "semicolon"
-    UNDERSCORE = "UNDERSCORE"
+    UNDERSCORE = "underscore"
+    COMMA = "comma"
     DEFINE = "define"
+    LAMBDA = "lambda"
     EOF = "eof"
 
 
@@ -36,6 +39,37 @@ class Token:
     def __repr__(self):
         return f"(Token type: {self.tt}, Lexeme: {self.lexeme})"
 
+
+#################### ENVIRONMENT CLASS ####################
+class Environment:
+    def __init__(self, bindings: Optional[Dict[str, Any]] = None, outer_scope: "Environment" = None):
+        self.bindings = bindings if bindings is not None else {}
+        self.outer_scope: Environment = outer_scope # outer env for nested scopes
+
+    def lookup(self, name: str) -> Any:
+        if name in self.bindings:
+            return self.bindings.get(name)
+        elif self.outer_scope is not None:
+            return self.outer_scope.lookup(name)
+        else:
+            raise NameError(f"Undefined symbol: {name}")
+
+    def define(self, name: str, value: str) -> None:
+        # Define a new variable in the current environment
+        self.bindings.update({ name: value })
+
+    def set(self, name: str, value: str) -> None:
+        if name in self.bindings:
+            self.bindings.update({ name: value })
+        elif self.outer_scope is not None:
+            self.outer_scope.set(name, value)
+        else:
+            raise NameError(f"Undefined symbol: {name}")
+
+    def copy(self) -> "Environment":
+        return copy.deepcopy(self)
+
+#################### END OF ENVIRONMENT CLASS ####################
 
 class Lexer:
     def __init__(self, source: str):
@@ -63,6 +97,7 @@ class Lexer:
             "-": lambda : self.add_token(TokenType.MINUS.name, c),
             "'": lambda : self.add_token(TokenType.QUOTE.name, c),
             "_": lambda : self.add_token(TokenType.UNDERSCORE.name, c),
+            ",": lambda : self.add_token(TokenType.COMMA.name, c),
             ";": lambda : self.handle_semicolon(),
         }
 
@@ -98,7 +133,10 @@ class Lexer:
         while self.is_alphanumeric(self.peek()):
             self.advance()
         text: str = self.source[self.start_position:self.current_position]
-        self.add_token(TokenType.IDENTIFIER.name, text)
+        if text == TokenType.LAMBDA.value:
+            self.add_token(TokenType.LAMBDA.name, text)
+        else:
+            self.add_token(TokenType.IDENTIFIER.name, text)
 
     def handle_string(self):
         while not self.is_at_end() and not self.is_string(self.peek()):
@@ -175,6 +213,41 @@ class ListNode(Node):
 
     def __repr__(self):
         return f"ListNode({self.list_elements})"
+
+class LambdaNode(Node):
+    def __init__(self, params, body):
+        self.params = params
+        self.body = body
+
+    def __repr__(self):
+        return f"LambdaNode({self.params}, {self.body})"
+
+class ClosureNode(Node):
+    def __init__(self, params, body, env: Environment):
+        self.params = params
+        self.body = body
+        self.env: Environment = env
+
+    def __call__(self, *args):
+        # Check the length of the args
+        if len(args) != len(self.params):
+            raise TypeError(f"Expected {len(self.params)} arguments, get {len(args)}")
+        # Create a new environment by extending the captured one
+        new_env: Environment = Environment(bindings=dict(zip(self.params, args)), outer_scope=self.env)
+        # Evaluate the body in the new environment
+        return Evaluator().evaluate(self.body, env=new_env)
+
+    def __repr__(self):
+        return f"ClosureNode({self.params}, {self.body}, env={self.env.bindings})"
+
+
+class BeginNode(Node):
+    def __init__(self, expressions: List):
+        self.expressions: List = expressions
+
+    def __repr__(self):
+        return f"BeginNode({self.expressions})"
+
 ############# END OF AST REPRESENTATION ######
 
 ############# PARSER #################
@@ -230,6 +303,12 @@ class Parser:
         if not self.match(TokenType.LPAREN.name):
             raise SyntaxError(f"Expected '(', found {self.peek()}")
 
+        # Check if its a Lambda or not
+        # If its a lambda, then return a LambdaNode
+        current_token: Token = self.peek()
+        if current_token.lexeme == TokenType.LAMBDA.value:
+            return self.parse_lambda()
+
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
             node: Node = self.parse_expressions()
@@ -240,6 +319,50 @@ class Parser:
 
         self.advance() # consume the RPAREN
         return ListNode(elements)
+
+    def parse_lambda(self):
+        # Lambda node takes: params(one or more), body(one or more) and environment
+        self.advance() # consume the lambda token
+
+        # Two forms of params
+        # Single -> Don't need to be wrapped in paranthesis
+        # Multiple -> Must be wrapped in paranthesis
+
+        # check if its a open paranthesis('(') or an identifier
+        param = self.advance()
+        
+        params = []
+        if param.tt == TokenType.LPAREN.name:
+            # either comma separated values of a single value
+            params = self.parse_params()
+        else:
+            # It must be a single identifier
+            if param.tt != TokenType.IDENTIFIER.name:
+                raise SyntaxError(f"Expected identifier for lambda parameter, got: {param.lexeme}")
+            params = [AtomNode(param.tt, param.lexeme)]
+
+        # Parse the body of the lambda function
+        body_expression = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            body_expression.append(self.parse_expressions())
+
+        # Consume the closing parenthesis
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected '(', got: {self.peek()}")
+        return LambdaNode(params, BeginNode(body_expression))
+    
+    def parse_params(self):
+        params = []
+        while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
+            token: Token = self.advance()
+            if token.tt != TokenType.IDENTIFIER.name and token.tt != TokenType.COMMA.name:
+                raise SyntaxError(f"Expected identifier in parameter list, got: {token.lexeme}")
+            params.append(token)
+        
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected '(', got: {self.peek()}")
+        
+        return params
 
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
@@ -275,9 +398,14 @@ class Evaluator:
             "/": lambda a, *args: self.divide(a, *args)
         }
         self.debug: int = debug
-        self.env: dict = {}
+        # Global environment
+        self.env: Environment = Environment(bindings={})
+        self.env.bindings.update(self.operators)
 
-    def evaluate(self, ast: Node, depth: int = 0):
+    def evaluate(self, ast: Node, depth: int = 0, env: Environment = None):
+
+        # Use the provided env or use the default one(global env)
+        if env is None: env = self.env
         indent = " " * depth
         if isinstance(ast, AtomNode):
             if self.debug:
@@ -286,17 +414,30 @@ class Evaluator:
                 return ast.value
             elif ast.type == TokenType.IDENTIFIER.name:
                 # Check the program environment to see if its present or not
-                value = self.env.get(ast.value, None)
+                value = env.lookup(ast.value)
                 if not value:
                     raise Exception(f"{ast.value} is not defined")
                 return value
             else:
                 # It must be an operator (for now)
-                # Check if the operator function is available in operators dictionary
-                fn: Callable = self.operators.get(ast.value)
+                # Check if the operator function is available in the enviroment
+                fn: Callable = env.lookup(ast.value)
                 if self.debug:
                     print(f"{indent}Atom Result: {fn}")
                 return fn
+        elif isinstance(ast, LambdaNode):
+            if self.debug:
+                print(f"Creating closure for lambda: {ast}")
+            # There might be more than one param (IDENTIFIERS)
+            values = [param.lexeme for param in ast.params if param.tt == TokenType.IDENTIFIER.name]
+            return ClosureNode(values, ast.body, env=env.copy())
+        elif isinstance(ast, BeginNode):
+            if self.debug:
+                print(f"{indent}Evaluating begin node: {ast}")
+            result = None
+            for expression in ast.expressions:
+                result = self.evaluate(expression, env=env)
+            return result
         elif isinstance(ast, ListNode):
             # we can safely assume that the 1st element is always an operator
             if self.debug:
@@ -307,6 +448,7 @@ class Evaluator:
                 # simply return the quoted expression value without evaluating it
                 return ast.list_elements[1:]
             elif len(ast.list_elements) >= 2 and isinstance(ast.list_elements[0], AtomNode) and ast.list_elements[0].value == TokenType.DEFINE.value:
+                # This is for the "define" feature
                 # check whether it has 2 arguments
                 rest = ast.list_elements[1:]
                 if not len(rest) == 2:
@@ -316,13 +458,13 @@ class Evaluator:
                 if not first_arg.type == TokenType.IDENTIFIER.name:
                     raise SyntaxError(f"Expected an identifier, got {first_arg}")
                 # Evaluate the second argument
-                result = self.evaluate(rest[1])
+                result = self.evaluate(rest[1], env=env)
                 # Save the result to the environment
-                self.env.update({ first_arg.value: result })
+                env.define(first_arg.value, result)
                 return result
             else:
-                func = self.evaluate(ast.list_elements[0])
-                args = [self.evaluate(arg) for arg in ast.list_elements[1:]]
+                func = self.evaluate(ast.list_elements[0], env=env)
+                args = [self.evaluate(arg, env=env) for arg in ast.list_elements[1:]]
             
             if self.debug:
                 print(f"{indent}Applying function: {func.__name__ if hasattr(func, '__name__') else func} to args: {args}")
