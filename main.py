@@ -21,6 +21,7 @@ class TokenType(Enum):
     STAR = "star"
     PLUS = "plus"
     MINUS = "minus"
+    SLASH = "slash"
     KEYWORD = "keyword"
     WHITESPACE = "whitespace"
     SEMICOLON = "semicolon"
@@ -29,6 +30,11 @@ class TokenType(Enum):
     DEFINE = "define"
     LAMBDA = "lambda"
     BEGIN = "begin"
+    GREATER_THAN = "greater_than"
+    LESS_THAN = "less_than"
+    GREATER_THAN_EQUAL = "greater_than_equal"
+    LESS_THAN_EQUAL = "less_than_equal"
+    IF = "if"
     EOF = "eof"
 
 
@@ -98,9 +104,14 @@ class Lexer:
             "*": lambda : self.add_token(TokenType.STAR.name, c),
             "+": lambda : self.add_token(TokenType.PLUS.name, c),
             "-": lambda : self.add_token(TokenType.MINUS.name, c),
+            "/": lambda : self.add_token(TokenType.SLASH.name, c),
             "'": lambda : self.add_token(TokenType.QUOTE.name, c),
             "_": lambda : self.add_token(TokenType.UNDERSCORE.name, c),
             ",": lambda : self.add_token(TokenType.COMMA.name, c),
+            ">": lambda : self.add_token(TokenType.GREATER_THAN.name, c),
+            "<": lambda : self.add_token(TokenType.LESS_THAN.name, c),
+            ">=": lambda: self.add_token(TokenType.GREATER_THAN_EQUAL.name, c),
+            "<=": lambda: self.add_token(TokenType.LESS_THAN_EQUAL.name, c),
             ";": lambda : self.handle_semicolon(),
         }
 
@@ -140,6 +151,8 @@ class Lexer:
             self.add_token(TokenType.LAMBDA.name, text)
         elif text == TokenType.BEGIN.value:
             self.add_token(TokenType.BEGIN.name, text)
+        elif text == TokenType.IF.name:
+            self.add_token(TokenType.IF.name, text)
         else:
             self.add_token(TokenType.IDENTIFIER.name, text)
 
@@ -249,6 +262,50 @@ class BeginNode(Node):
     def __repr__(self):
         return f"BeginNode({self.expressions})"
 
+class PlusNode(Node):
+    def __init__(self, operands):
+        self.operator = "+"
+        self.operands = operands
+    
+    def __str__(self):
+        return f"(+ {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"PlusNode({self.operands})"
+
+class MinusNode(Node):
+    def __init__(self, operands):
+        self.operator = "-"
+        self.operands = operands
+    
+    def __str__(self):
+        return f"(- {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"MinusNode({self.operands})"
+
+class MultiplyNode(Node):
+    def __init__(self, operands):
+        self.operator = "*"
+        self.operands = operands
+
+    def __str__(self):
+        return f"(* {"".join(str(op) for op in self.operands)})"
+
+    def __reduce__(self):
+        return f"MultiplyNode({self.operands})"
+
+class DivideNode(Node):
+    def __init__(self, operands):
+        self.operator = "/"
+        self.operands = operands
+    
+    def __str__(self):
+        return f"(/ {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"DivideNode({self.operands})"
+
 ############# END OF AST REPRESENTATION ######
 
 ############# PARSER #################
@@ -259,7 +316,8 @@ class Parser:
         TokenType.IDENTIFIER.name,
         TokenType.PLUS.name,
         TokenType.MINUS.name,
-        TokenType.STAR.name
+        TokenType.STAR.name,
+        TokenType.SLASH.name
     ]
 
     def __init__(self, tokens: List[Token]):
@@ -314,6 +372,19 @@ class Parser:
         # If its a begin, then return a BeginNode
         if current_token.lexeme == TokenType.BEGIN.value:
             return self.parse_begin()
+
+        # check if its a Plus(+) token
+        if current_token.lexeme == "+":
+            return self.parse_plus()
+
+        if current_token.lexeme == "-":
+            return self.parse_minus()
+
+        if current_token.lexeme == "*":
+            return self.parse_multiply()
+
+        if current_token.lexeme == "/":
+            return self.parse_divide()
 
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
@@ -382,6 +453,53 @@ class Parser:
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
         return BeginNode(expressions=expressions)
 
+    def parse_plus(self):
+        self.advance() # consume the plus operator
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+        
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return PlusNode(operands)
+
+    def parse_minus(self):
+        self.advance() # consume the "-" token
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+        
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return MinusNode(operands)
+
+    def parse_multiply(self):
+        self.advance() # consume the "*" token
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return MultiplyNode(operands)
+    
+    def parse_divide(self):
+        self.advance() # consume the "/" token
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+        
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return DivideNode(operands) 
 
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
@@ -493,6 +611,22 @@ class Evaluator:
             if self.debug:
                 print(f"{indent}List result: {result}")
             return result
+        elif isinstance(ast, PlusNode):
+            values = [self.evaluate(op, env=env) for op in ast.operands]
+            result = self.addition(*values)
+            return result
+        elif isinstance(ast, MinusNode):
+            values = [self.evaluate(op, env=env) for op in ast.operands]
+            result = self.subtraction(*values)
+            return result
+        elif isinstance(ast, MultiplyNode):
+            values = [self.evaluate(op, env=env) for op in ast.operands]
+            result = self.multiply(*values)
+            return result
+        elif isinstance(ast, DivideNode):
+            values = [self.evaluate(op, env=env) for op in ast.operands]
+            result = self.divide(*values)
+            return result
         else:
             raise SyntaxError(f"Unknown node type: {ast}")
     
@@ -515,6 +649,7 @@ class Evaluator:
         return result
 
     def divide(self, a, *args):
+        a = int(a)
         if args:
             return a / self.multiply(*args)
         else:
