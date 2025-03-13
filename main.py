@@ -379,6 +379,15 @@ class BooleanNode(Node):
     def __repr__(self):
         return f"BooleanNode({self.value})"
 
+class EqualNode(Node):
+    def __init__(self, operands):
+        self.operands = operands
+
+    def __str__(self):
+        return f"(= {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"EqualNode({self.operands})"
 ############# END OF AST REPRESENTATION ######
 
 ############# PARSER #################
@@ -473,6 +482,9 @@ class Parser:
 
         if current_token.lexeme == TokenType.IF.value:
             return self.parse_if_expression()
+
+        if current_token.lexeme == "=":
+            return self.parse_equal()
 
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
@@ -636,6 +648,21 @@ class Parser:
             raise SyntaxError(f"Expected: #t or #f, got: {self.peek()}")
         return BooleanNode(True if current_token.lexeme == "#t" else False)
 
+    def parse_equal(self):
+        self.advance() # consume the "=" token
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+
+        if len(operands) == 0:
+            raise SyntaxError("Expected atleast 1 argument, got 0")
+        
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return EqualNode(operands)
+
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
         if self.peek().tt == expected_token_type:
@@ -674,6 +701,7 @@ class Evaluator:
             ">=": lambda *args: self.greater_than_equal(*args),
             "#t": True,
             "#f": False,
+            "=": lambda *args: self.equality(*args),
             "display": lambda a: self.display(a)
         }
         self.debug: int = debug
@@ -793,6 +821,10 @@ class Evaluator:
             return result
         elif isinstance(ast, BooleanNode):
             return ast.value
+        elif isinstance(ast, EqualNode):
+            values = [self.evaluate(op, env=env) for op in ast.operands]
+            result = self.equality(*values)
+            return result
         else:
             raise SyntaxError(f"Unknown node type: {ast}")
     
@@ -858,6 +890,12 @@ class Evaluator:
     def display(self, a) -> None:
         print(a, flush=True)
 
+    def equality(self, *args) -> bool:
+        if len(args) < 2: return True
+        for i in range(len(args) - 1):
+            if not (args[i] == args[i+1]):
+                return False
+        return True
 ############## END OF EVALUATOR #########
 class Repl:
     def __init__(self, debug: int = 0):
