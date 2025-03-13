@@ -35,6 +35,7 @@ class TokenType(Enum):
     GREATER_THAN_EQUAL = "greater_than_equal"
     LESS_THAN_EQUAL = "less_than_equal"
     IF = "if"
+    BOOLEAN = "boolean"
     EOF = "eof"
 
 
@@ -92,7 +93,7 @@ class Lexer:
         while not self.is_at_end():
             self.start_position = self.current_position
             self.scan_token()
-        self.add_token(TokenType.EOF.name)
+        self.add_token(TokenType.EOF.name, "")
 
     def scan_token(self):
         c: str = self.advance()
@@ -111,6 +112,7 @@ class Lexer:
             ">": lambda : self.add_token(TokenType.GREATER_THAN_EQUAL.name if self.match("=") else TokenType.GREATER_THAN.name),
             "<": lambda : self.add_token(TokenType.LESS_THAN_EQUAL.name if self.match("=") else TokenType.LESS_THAN.name),
             ";": lambda : self.handle_semicolon(),
+            "#": lambda : self.handle_boolean()
         }
 
         fn: Callable = keywords.get(c, lambda: self.default_case(c))
@@ -122,6 +124,11 @@ class Lexer:
     def handle_semicolon(self):
         while (self.peek() != "\n" and not self.is_at_end()):
             self.advance()
+
+    def handle_boolean(self):
+        if not (self.match('t') or self.match('f')):
+            raise SyntaxError(f"Expected 't' or 'f', got: {self.peek()}")
+        self.add_token(TokenType.BOOLEAN.name)
 
     def default_case(self, c: str):
         if self.is_digit(c):
@@ -312,7 +319,6 @@ class DivideNode(Node):
     def __repr__(self):
         return f"DivideNode({self.operands})"
 
-
 class LessThanNode(Node):
     def __init__(self, operands):
         self.operator = "<"
@@ -356,6 +362,23 @@ class GreaterThanEqualNode(Node):
 
     def __repr__(self):
         return f"GreaterThanEqualNode({self.operands})"
+
+class IfNode(Node):
+    def __init__(self, condition, true_case_expression, false_case_expression = None):
+        self.condition = condition
+        self.true_case_expression = true_case_expression
+        self.false_case_expression = false_case_expression
+
+class BooleanNode(Node):
+    def __init__(self, value: bool):
+        self.value = value
+
+    def __str__(self):
+        return f"#t" if self.value else "#f"
+    
+    def __repr__(self):
+        return f"BooleanNode({self.value})"
+
 ############# END OF AST REPRESENTATION ######
 
 ############# PARSER #################
@@ -390,6 +413,8 @@ class Parser:
             return self.parse_atom()
         elif current_token.tt == TokenType.QUOTE.name:
             return self.parse_quote()
+        elif current_token.tt == TokenType.BOOLEAN.name:
+            return self.parse_boolean()
         elif current_token.tt == TokenType.LPAREN.name:
             return self.parse_application()
         else:
@@ -445,6 +470,9 @@ class Parser:
 
         if current_token.lexeme == ">" or current_token.lexeme == ">=":
             return self.parse_greater_than()
+
+        if current_token.lexeme == TokenType.IF.value:
+            return self.parse_if_expression()
 
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
@@ -586,6 +614,28 @@ class Parser:
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
         
         return GreaterThanNode(operands) if token.tt == TokenType.GREATER_THAN.name else GreaterThanEqualNode(operands)
+
+    def parse_if_expression(self):
+        self.advance() # consume the "if" token
+
+        condition = self.parse_expressions()
+
+        true_case = self.parse_expressions()
+
+        false_case = self.parse_expressions()
+
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return IfNode(condition, true_case, false_case)
+
+    def parse_boolean(self):
+        current_token: Token = self.advance()
+
+        BOOLEANS = ["#t", "#f"]
+        if current_token.lexeme not in BOOLEANS:
+            raise SyntaxError(f"Expected: #t or #f, got: {self.peek()}")
+        return BooleanNode(True if current_token.lexeme == "#t" else False)
+
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
         if self.peek().tt == expected_token_type:
@@ -622,6 +672,8 @@ class Evaluator:
             "<=": lambda *args: self.less_than_equal(*args),
             ">": lambda *args: self.greater_than(*args),
             ">=": lambda *args: self.greater_than_equal(*args),
+            "#t": True,
+            "#f": False,
             "display": lambda a: self.display(a)
         }
         self.debug: int = debug
@@ -642,7 +694,7 @@ class Evaluator:
             elif ast.type == TokenType.IDENTIFIER.name:
                 # Check the program environment to see if its present or not
                 value = env.lookup(ast.value)
-                if not value:
+                if value is None:
                     raise Exception(f"{ast.value} is not defined")
                 return value
             else:
@@ -732,6 +784,15 @@ class Evaluator:
             values = [self.evaluate(op, env=env) for op in ast.operands]
             result = self.greater_than_equal(*values)
             return result
+        elif isinstance(ast, IfNode):
+            condition = self.evaluate(ast.condition, env=env)
+            if condition:
+                result = self.evaluate(ast.true_case_expression, env=env)
+            else:
+                result = self.evaluate(ast.false_case_expression, env=env)
+            return result
+        elif isinstance(ast, BooleanNode):
+            return ast.value
         else:
             raise SyntaxError(f"Unknown node type: {ast}")
     
@@ -827,6 +888,7 @@ class Repl:
     def run(self, source) -> None:
         lexer = Lexer(source)
         lexer.scan_tokens()
+        # print(lexer.get_tokens())
 
         parser = Parser(lexer.get_tokens())
         parser.parse_tokens()

@@ -67,11 +67,12 @@
 ;;;;;;;; END OF BEGIN CODE ;;;;;;;;;;;;
 
 ; Conditional expression
-;(define x 3)
-;(if (> x 5)
-;    "Greater than five"
-;    "Not greater than five"
-;)
+(define x 3)
+(if (> x 5)
+    "Greater than five"
+    "Not greater than five"
+)
+
 
 ; Sequential execution using `begin`
 ;(begin
