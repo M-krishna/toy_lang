@@ -92,7 +92,7 @@ class Lexer:
         while not self.is_at_end():
             self.start_position = self.current_position
             self.scan_token()
-        self.add_token(TokenType.EOF.name, "")
+        self.add_token(TokenType.EOF.name)
 
     def scan_token(self):
         c: str = self.advance()
@@ -108,18 +108,16 @@ class Lexer:
             "'": lambda : self.add_token(TokenType.QUOTE.name, c),
             "_": lambda : self.add_token(TokenType.UNDERSCORE.name, c),
             ",": lambda : self.add_token(TokenType.COMMA.name, c),
-            ">": lambda : self.add_token(TokenType.GREATER_THAN.name, c),
-            "<": lambda : self.add_token(TokenType.LESS_THAN.name, c),
-            ">=": lambda: self.add_token(TokenType.GREATER_THAN_EQUAL.name, c),
-            "<=": lambda: self.add_token(TokenType.LESS_THAN_EQUAL.name, c),
+            ">": lambda : self.add_token(TokenType.GREATER_THAN_EQUAL.name if self.match("=") else TokenType.GREATER_THAN.name),
+            "<": lambda : self.add_token(TokenType.LESS_THAN_EQUAL.name if self.match("=") else TokenType.LESS_THAN.name),
             ";": lambda : self.handle_semicolon(),
         }
 
         fn: Callable = keywords.get(c, lambda: self.default_case(c))
         try:
             fn()
-        except:
-            raise Exception("Something went wrong during lexical analysis")
+        except Exception as e:
+            raise Exception(f"Something went wrong during lexical analysis: {e}")
 
     def handle_semicolon(self):
         while (self.peek() != "\n" and not self.is_at_end()):
@@ -169,7 +167,9 @@ class Lexer:
         text: str = self.source[self.start_position+1:self.current_position-1]
         self.add_token(TokenType.STRING.name, text)
 
-    def add_token(self, token_type: TokenType, lexeme: str):
+    def add_token(self, token_type: TokenType, lexeme: str = None):
+        if lexeme is None:
+            lexeme: str = self.source[self.start_position:self.current_position]
         token: Token = Token(
             token_type, lexeme
         )
@@ -201,6 +201,12 @@ class Lexer:
         if current_chr == "\n": self.line += 1
         self.current_position += 1
         return current_chr
+
+    def match(self, expected_token: str) -> bool:
+        if self.peek() != expected_token:
+            return False
+        self.advance()
+        return True
 
     def peek(self) -> str:
         if self.is_at_end(): return '\0' # null terminator
@@ -306,6 +312,50 @@ class DivideNode(Node):
     def __repr__(self):
         return f"DivideNode({self.operands})"
 
+
+class LessThanNode(Node):
+    def __init__(self, operands):
+        self.operator = "<"
+        self.operands = operands
+
+    def __str__(self):
+        return f"(< {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"LessThanNode({self.operands})"
+
+class LessThanEqualNode(Node):
+    def __init__(self, operands):
+        self.operator = "<="
+        self.operands = operands
+
+    def __str__(self):
+        return f"(<= {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"LessThanEqualNode({self.operands})"
+
+class GreaterThanNode(Node):
+    def __init__(self, operands):
+        self.operator = ">"
+        self.operands = operands
+
+    def __str__(self):
+        return f"(> {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"GreaterThanNode({self.operands})"
+
+class GreaterThanEqualNode(Node):
+    def __init__(self, operands):
+        self.operator = ">="
+        self.operands = operands
+
+    def __str__(self):
+        return f"(>= {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"GreaterThanEqualNode({self.operands})"
 ############# END OF AST REPRESENTATION ######
 
 ############# PARSER #################
@@ -317,7 +367,11 @@ class Parser:
         TokenType.PLUS.name,
         TokenType.MINUS.name,
         TokenType.STAR.name,
-        TokenType.SLASH.name
+        TokenType.SLASH.name,
+        TokenType.LESS_THAN.name,
+        TokenType.LESS_THAN_EQUAL.name,
+        TokenType.GREATER_THAN.name,
+        TokenType.GREATER_THAN_EQUAL.name
     ]
 
     def __init__(self, tokens: List[Token]):
@@ -385,6 +439,12 @@ class Parser:
 
         if current_token.lexeme == "/":
             return self.parse_divide()
+
+        if current_token.lexeme == "<" or current_token.lexeme == "<=":
+            return self.parse_less_than()
+
+        if current_token.lexeme == ">" or current_token.lexeme == ">=":
+            return self.parse_greater_than()
 
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
@@ -501,6 +561,31 @@ class Parser:
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
         return DivideNode(operands) 
 
+    def parse_less_than(self):
+        token: Token = self.advance() # consume "<" or "<=" token
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+        
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+
+        return LessThanNode(operands) if token.tt == TokenType.LESS_THAN.name else LessThanEqualNode(operands)
+
+    def parse_greater_than(self):
+        token: Token = self.advance() # consume ">" or ">=" token
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        
+        return GreaterThanNode(operands) if token.tt == TokenType.GREATER_THAN.name else GreaterThanEqualNode(operands)
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
         if self.peek().tt == expected_token_type:
@@ -533,6 +618,10 @@ class Evaluator:
             "-": lambda a, *args: self.subtraction(a, *args),
             "*": lambda *args: self.multiply(*args),
             "/": lambda a, *args: self.divide(a, *args),
+            "<": lambda *args: self.less_than(*args),
+            "<=": lambda *args: self.less_than_equal(*args),
+            ">": lambda *args: self.greater_than(*args),
+            ">=": lambda *args: self.greater_than_equal(*args),
             "display": lambda a: self.display(a)
         }
         self.debug: int = debug
@@ -627,6 +716,22 @@ class Evaluator:
             values = [self.evaluate(op, env=env) for op in ast.operands]
             result = self.divide(*values)
             return result
+        elif isinstance(ast, LessThanNode):
+            values = [self.evaluate(op, env=env) for op in ast.operands]
+            result = self.less_than(*values)
+            return result
+        elif isinstance(ast, LessThanEqualNode):
+            values = [self.evaluate(op, env=env) for op in ast.operands]
+            result = self.less_than_equal(*values)
+            return result
+        elif isinstance(ast, GreaterThanNode):
+            values = [self.evaluate(op, env=env) for op in ast.operands]
+            result = self.greater_than(*values)
+            return result
+        elif isinstance(ast, GreaterThanEqualNode):
+            values = [self.evaluate(op, env=env) for op in ast.operands]
+            result = self.greater_than_equal(*values)
+            return result
         else:
             raise SyntaxError(f"Unknown node type: {ast}")
     
@@ -654,6 +759,40 @@ class Evaluator:
             return a / self.multiply(*args)
         else:
             return a
+
+    def less_than(self, *args):
+        # If there is only one argument, return True
+        if len(args) < 2:
+            return True
+        for i in range(len(args) - 1):
+            if not args[i] < args[i+1]:
+                return False
+        return True
+
+    def less_than_equal(self, *args):
+        # If there is only one argument, return True
+        if len(args) < 2:
+            return True
+        for i in range(len(args) - 1):
+            if not args[i] <= args[i+1]:
+                return False
+        return True
+
+    def greater_than(self, *args):
+        if len(args) < 2:
+            return True
+        for i in range(len(args) - 1):
+            if not args[i] > args[i+1]:
+                return False
+        return True
+
+    def greater_than_equal(self, *args):
+        if len(args) < 2:
+            return True
+        for i in range(len(args) - 1):
+            if not args[i] >= args[i+1]:
+                return False
+        return True
 
     def display(self, a) -> None:
         print(a, flush=True)
