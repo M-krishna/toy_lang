@@ -24,7 +24,7 @@ brew install toy-language
 
 ## Quick start
 
-```bash
+```lisp
 ; Hello World
 (display "Hello, World!")
 
@@ -67,7 +67,7 @@ Boolean Operations
 
 Functions
 
-```bash
+```lisp
 ; Define a function
 (lambda (x) (* x x))
 
