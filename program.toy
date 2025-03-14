@@ -89,6 +89,15 @@
     (+ a b)
 )
 
+(define cheeks "she doesn't love romi")
+(define romi "he madly loves cheeks")
+(define which_is_true (lambda (a) (if a romi cheeks)))
+
+(define cheeks_loves_romi #f)
+(define romi_loves_cheeks #t)
+
+(which_is_true romi_loves_cheeks)
+
 ; Logical operator (and, or, not)
 (not 0)
 (not 1)
@@ -96,7 +105,6 @@
 (not #f)
 (not "")
 (not "krishna")
-
 
 ; Recursion: factorial function
 ;(define fact

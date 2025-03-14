@@ -163,6 +163,10 @@ class Lexer:
             self.add_token(TokenType.IF.name, text)
         elif text == TokenType.NOT.value:
             self.add_token(TokenType.NOT.name, text)
+        elif text == TokenType.AND.value:
+            self.add_token(TokenType.AND.name, text)
+        elif text == TokenType.OR.value:
+            self.add_token(TokenType.OR.name, text)
         else:
             self.add_token(TokenType.IDENTIFIER.name, text)
 
@@ -404,6 +408,26 @@ class NotNode(Node):
     def __repr__(self):
         return f"NotNode({self.operand})"
 
+class AndNode(Node):
+    def __init__(self, operands):
+        self.operands = operands
+    
+    def __str__(self):
+        return f"(and {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"AndNode({self.operands})"
+
+class OrNode(Node):
+    def __init__(self, operands):
+        self.operands = operands
+    
+    def __str__(self):
+        return f"(or {"".join(str(op) for op in self.operands)})"
+
+    def __repr__(self):
+        return f"OrNode({self.operands})"
+
 ############# END OF AST REPRESENTATION ######
 
 ############# PARSER #################
@@ -504,6 +528,12 @@ class Parser:
 
         if current_token.lexeme == TokenType.NOT.value:
             return self.parse_not()
+
+        if current_token.lexeme == TokenType.AND.value:
+            return self.parse_and()
+
+        if current_token.lexeme == TokenType.OR.value:
+            return self.parse_or()
 
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
@@ -700,6 +730,30 @@ class Parser:
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
         return NotNode(operand)
 
+    def parse_and(self):
+        self.advance() # consume the "and" token
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+        
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return AndNode(operands)
+
+    def parse_or(self):
+        self.advance() # consume the "or" token
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+        
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return OrNode(operands)
+
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
         if self.peek().tt == expected_token_type:
@@ -739,7 +793,6 @@ class Evaluator:
             "#t": True,
             "#f": False,
             "=": lambda *args: self.equality(*args),
-            "not": lambda arg : self.__not(arg),
             "display": lambda a: self.display(a)
         }
         self.debug: int = debug
@@ -866,6 +919,18 @@ class Evaluator:
         elif isinstance(ast, NotNode):
             result = self.__not(self.evaluate(ast.operand, env=env))
             return result
+        elif isinstance(ast, AndNode):
+            for operand in ast.operands:
+                result = self.evaluate(operand, env=env)
+                if not result:
+                    return BooleanNode(False)
+            return BooleanNode(True)
+        elif isinstance(ast, OrNode):
+            for operand in ast.operands:
+                result = self.evaluate(operand, env=env)
+                if result:
+                    return BooleanNode(True)
+            return BooleanNode(False)
         else:
             raise SyntaxError(f"Unknown node type: {ast}")
     
@@ -943,6 +1008,7 @@ class Evaluator:
             raise SyntaxError("Expected 1 argument, got 0")
         value = arg.value if isinstance(arg, BooleanNode) else arg
         return BooleanNode(not value)
+    
 ############## END OF EVALUATOR #########
 class Repl:
     def __init__(self, debug: int = 0):
