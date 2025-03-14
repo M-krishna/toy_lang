@@ -36,6 +36,9 @@ class TokenType(Enum):
     LESS_THAN_EQUAL = "less_than_equal"
     IF = "if"
     BOOLEAN = "boolean"
+    AND = "and"
+    OR = "or"
+    NOT = "not"
     EOF = "eof"
 
 
@@ -156,8 +159,10 @@ class Lexer:
             self.add_token(TokenType.LAMBDA.name, text)
         elif text == TokenType.BEGIN.value:
             self.add_token(TokenType.BEGIN.name, text)
-        elif text == TokenType.IF.name:
+        elif text == TokenType.IF.value:
             self.add_token(TokenType.IF.name, text)
+        elif text == TokenType.NOT.value:
+            self.add_token(TokenType.NOT.name, text)
         else:
             self.add_token(TokenType.IDENTIFIER.name, text)
 
@@ -388,6 +393,17 @@ class EqualNode(Node):
 
     def __repr__(self):
         return f"EqualNode({self.operands})"
+
+class NotNode(Node):
+    def __init__(self, operand):
+        self.operand = operand
+
+    def __str__(self):
+        return f"(not {self.operand})"
+    
+    def __repr__(self):
+        return f"NotNode({self.operand})"
+
 ############# END OF AST REPRESENTATION ######
 
 ############# PARSER #################
@@ -432,7 +448,7 @@ class Parser:
     def parse_atom(self):
         current_token: Token = self.peek()
         atom_node: AtomNode = AtomNode(
-            current_token.tt, current_token.lexeme
+            current_token.tt, int(current_token.lexeme) if current_token.tt == TokenType.NUMBER.name else current_token.lexeme
         )
         self.advance() # consume the token
         return atom_node
@@ -485,6 +501,9 @@ class Parser:
 
         if current_token.lexeme == "=":
             return self.parse_equal()
+
+        if current_token.lexeme == TokenType.NOT.value:
+            return self.parse_not()
 
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
@@ -631,10 +650,16 @@ class Parser:
         self.advance() # consume the "if" token
 
         condition = self.parse_expressions()
+        if condition is None:
+            raise SyntaxError(f"Expected conditional statement, got nothing")
 
         true_case = self.parse_expressions()
+        if true_case is None:
+            raise SyntaxError(f"Expected true clause, got nothing")
 
         false_case = self.parse_expressions()
+        if false_case is None:
+            raise SyntaxError(f"Expected false clause, got nothing")
 
         if not self.match(TokenType.RPAREN.name):
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
@@ -662,6 +687,18 @@ class Parser:
         if not self.match(TokenType.RPAREN.name):
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
         return EqualNode(operands)
+
+    def parse_not(self):
+        self.advance() # consume the "not" token
+        # The not operator must have only one operand
+        # The operand can be either 0 or 1 / #t or #f / "" or "string"
+        # Which means the token type must be either NUMBER or BOOLEAN or STRING
+        operand = self.parse_expressions()
+        if not operand:
+            raise SyntaxError("Expected 1 argument, got 0")
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return NotNode(operand)
 
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
@@ -702,6 +739,7 @@ class Evaluator:
             "#t": True,
             "#f": False,
             "=": lambda *args: self.equality(*args),
+            "not": lambda arg : self.__not(arg),
             "display": lambda a: self.display(a)
         }
         self.debug: int = debug
@@ -825,6 +863,9 @@ class Evaluator:
             values = [self.evaluate(op, env=env) for op in ast.operands]
             result = self.equality(*values)
             return result
+        elif isinstance(ast, NotNode):
+            result = self.__not(self.evaluate(ast.operand, env=env))
+            return result
         else:
             raise SyntaxError(f"Unknown node type: {ast}")
     
@@ -896,6 +937,12 @@ class Evaluator:
             if not (args[i] == args[i+1]):
                 return False
         return True
+
+    def __not(self, arg) -> BooleanNode:
+        if arg is None:
+            raise SyntaxError("Expected 1 argument, got 0")
+        value = arg.value if isinstance(arg, BooleanNode) else arg
+        return BooleanNode(not value)
 ############## END OF EVALUATOR #########
 class Repl:
     def __init__(self, debug: int = 0):

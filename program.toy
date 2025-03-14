@@ -89,6 +89,15 @@
     (+ a b)
 )
 
+; Logical operator (and, or, not)
+(not 0)
+(not 1)
+(not #t)
+(not #f)
+(not "")
+(not "krishna")
+
+
 ; Recursion: factorial function
 ;(define fact
 ;    (lambda (n)
