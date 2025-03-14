@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import readline # used by "input()" function under the hood
 import copy
 from datetime import datetime
 from enum import Enum
@@ -1027,8 +1028,7 @@ class Repl:
         print(f"Toy Lang 0.0.1 (default, {now})")
         print("Type (exit) to quit the console")
         while True:
-            print(">>> ", end="", flush=True)
-            line = sys.stdin.readline()
+            line = input(">>> ")
             if not line: continue
             if line.strip() == "(exit)": sys.exit(0)
             try:
@@ -1039,7 +1039,6 @@ class Repl:
     def run(self, source) -> None:
         lexer = Lexer(source)
         lexer.scan_tokens()
-        # print(lexer.get_tokens())
 
         parser = Parser(lexer.get_tokens())
         parser.parse_tokens()
