@@ -11,7 +11,7 @@
 
 
 1
-"krishna loves cheeks"
+"Hello World"
 ; "krishna"
 (+ 1 2 3)
 (- 100 1)
@@ -73,11 +73,6 @@
     "Not greater than five"
 )
 
-(define romi_loves_cheeks #t)
-(define cheeks_loves_romi #f)
-
-(if romi_loves_cheeks "dont lie" "I knew it already")
-(if cheeks_loves_romi "Really?" "Unbelievable")
 
 (= 1 1) ; should return True
 (= 1 2) ; should return False
@@ -89,14 +84,6 @@
     (+ a b)
 )
 
-(define cheeks "she doesn't love romi")
-(define romi "he madly loves cheeks")
-(define which_is_true (lambda (a) (if a romi cheeks)))
-
-(define cheeks_loves_romi #f)
-(define romi_loves_cheeks #t)
-
-(which_is_true romi_loves_cheeks)
 
 ; Logical operator (and, or, not)
 (not 0)
