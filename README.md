@@ -16,10 +16,7 @@ A minimalist Scheme-like programming language interpreter written in Python. Thi
 
 ```bash
 # Using pip
-pip install toy-language
-
-# Using Homebrew
-brew install toy-language
+pip install toy_lang
 ```
 
 ## Quick start
@@ -81,8 +78,8 @@ Functions
 
 To set up the development environment:
 ```bash
-git clone https://github.com/yourusername/toy-language.git
-cd toy-language
+git clone https://github.com/M-krishna/toy_lang.git
+cd toy_lang
 ```
 
 ## Contributing
