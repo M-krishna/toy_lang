@@ -1049,7 +1049,7 @@ class Repl:
             print(result)
 
 def main():
-    PROGRAM_NAME = "toy-lang"
+    PROGRAM_NAME = "toy_lang"
     arg_len = len(arguments)
     repl = Repl()
     if arg_len > 2:
