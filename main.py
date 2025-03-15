@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sys
 import readline # used by "input()" function under the hood
 import copy
@@ -291,7 +292,7 @@ class PlusNode(Node):
         self.operands = operands
     
     def __str__(self):
-        return f"(+ {"".join(str(op) for op in self.operands)})"
+        return f"(+ {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"PlusNode({self.operands})"
@@ -302,7 +303,7 @@ class MinusNode(Node):
         self.operands = operands
     
     def __str__(self):
-        return f"(- {"".join(str(op) for op in self.operands)})"
+        return f"(- {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"MinusNode({self.operands})"
@@ -313,7 +314,7 @@ class MultiplyNode(Node):
         self.operands = operands
 
     def __str__(self):
-        return f"(* {"".join(str(op) for op in self.operands)})"
+        return f"(* {''.join(str(op) for op in self.operands)})"
 
     def __reduce__(self):
         return f"MultiplyNode({self.operands})"
@@ -324,7 +325,7 @@ class DivideNode(Node):
         self.operands = operands
     
     def __str__(self):
-        return f"(/ {"".join(str(op) for op in self.operands)})"
+        return f"(/ {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"DivideNode({self.operands})"
@@ -335,7 +336,7 @@ class LessThanNode(Node):
         self.operands = operands
 
     def __str__(self):
-        return f"(< {"".join(str(op) for op in self.operands)})"
+        return f"(< {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"LessThanNode({self.operands})"
@@ -346,7 +347,7 @@ class LessThanEqualNode(Node):
         self.operands = operands
 
     def __str__(self):
-        return f"(<= {"".join(str(op) for op in self.operands)})"
+        return f"(<= {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"LessThanEqualNode({self.operands})"
@@ -357,7 +358,7 @@ class GreaterThanNode(Node):
         self.operands = operands
 
     def __str__(self):
-        return f"(> {"".join(str(op) for op in self.operands)})"
+        return f"(> {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"GreaterThanNode({self.operands})"
@@ -368,7 +369,7 @@ class GreaterThanEqualNode(Node):
         self.operands = operands
 
     def __str__(self):
-        return f"(>= {"".join(str(op) for op in self.operands)})"
+        return f"(>= {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"GreaterThanEqualNode({self.operands})"
@@ -394,7 +395,7 @@ class EqualNode(Node):
         self.operands = operands
 
     def __str__(self):
-        return f"(= {"".join(str(op) for op in self.operands)})"
+        return f"(= {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"EqualNode({self.operands})"
@@ -414,7 +415,7 @@ class AndNode(Node):
         self.operands = operands
     
     def __str__(self):
-        return f"(and {"".join(str(op) for op in self.operands)})"
+        return f"(and {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"AndNode({self.operands})"
@@ -424,7 +425,7 @@ class OrNode(Node):
         self.operands = operands
     
     def __str__(self):
-        return f"(or {"".join(str(op) for op in self.operands)})"
+        return f"(or {''.join(str(op) for op in self.operands)})"
 
     def __repr__(self):
         return f"OrNode({self.operands})"
@@ -1047,14 +1048,17 @@ class Repl:
             result = self.evaluator.evaluate(node)
             print(result)
 
-
-if __name__ == "__main__":
+def main():
+    PROGRAM_NAME = "toy-lang"
     arg_len = len(arguments)
     repl = Repl()
     if arg_len > 2:
-        print(f"Usage: ./main.py [script]")
+        print(f"Usage: {PROGRAM_NAME} [script]")
         sys.exit(64)
     elif arg_len == 2:
         repl.run_file(arguments[1])
     else:
         repl.run_prompt()
+
+if __name__ == "__main__":
+    main()
