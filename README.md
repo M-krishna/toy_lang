@@ -16,7 +16,7 @@ A minimalist Scheme-like programming language interpreter written in Python. Thi
 
 ```bash
 # Using pip
-pip install toy_lang
+pip install toy-lang-fun
 ```
 
 ## Quick start
