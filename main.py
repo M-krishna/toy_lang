@@ -41,6 +41,7 @@ class TokenType(Enum):
     AND = "and"
     OR = "or"
     NOT = "not"
+    LIST = "list"
     EOF = "eof"
 
 
@@ -169,6 +170,8 @@ class Lexer:
             self.add_token(TokenType.AND.name, text)
         elif text == TokenType.OR.value:
             self.add_token(TokenType.OR.name, text)
+        elif text == TokenType.LIST.value:
+            self.add_token(TokenType.LIST.name, text)
         else:
             self.add_token(TokenType.IDENTIFIER.name, text)
 
@@ -430,6 +433,24 @@ class OrNode(Node):
     def __repr__(self):
         return f"OrNode({self.operands})"
 
+class ConsCell(Node):
+    def __init__(self, car, cdr):
+        self.car = car # the first element in the list
+        self.cdr = cdr # the rest of the list (another ConsCell or nil)
+    
+    def __str__(self):
+        return f"({self.car} . {self.cdr})"
+    
+    def __repr__(self):
+        return f"ConsCell({self.car}, {self.cdr})"
+
+class EmptyListNode(Node):
+    def __str__(self):
+        return "()"
+    
+    def __repr__(self):
+        return "NIL"
+
 ############# END OF AST REPRESENTATION ######
 
 ############# PARSER #################
@@ -536,6 +557,9 @@ class Parser:
 
         if current_token.lexeme == TokenType.OR.value:
             return self.parse_or()
+
+        if current_token.lexeme == TokenType.LIST.value:
+            return self.parse_list()
 
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
@@ -756,6 +780,26 @@ class Parser:
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
         return OrNode(operands)
 
+    def parse_list(self) -> ConsCell:
+        self.advance() # consume the "list" token
+
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+
+        # Build the ConsCell list using the operands list(either recursively or iteratively)
+        cons_cell: ConsCell = self.build_cons_cell(operands)
+
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return cons_cell
+    
+    def build_cons_cell(self, operands) -> ConsCell | EmptyListNode:
+        if len(operands) == 0:
+            return EmptyListNode()
+        return ConsCell(operands[0], self.build_cons_cell(operands[1:]))
+
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
         if self.peek().tt == expected_token_type:
@@ -933,6 +977,20 @@ class Evaluator:
                 if result:
                     return BooleanNode(True)
             return BooleanNode(False)
+        elif isinstance(ast, ConsCell):
+            car_value = self.evaluate(ast.car, env=env)
+
+            cdr_values = []
+            current = ast.cdr
+            while not isinstance(current, EmptyListNode):
+                cdr_values.append(self.evaluate(current.car, env=env))
+                current = current.cdr
+            result = tuple([car_value]) + tuple(cdr_values)
+            if len(result) == 0:
+                return tuple()
+            return f"({" ".join(str(e) for e in result)})"
+        elif isinstance(ast, EmptyListNode):
+            return ast
         else:
             raise SyntaxError(f"Unknown node type: {ast}")
     
@@ -1043,6 +1101,7 @@ class Repl:
 
         parser = Parser(lexer.get_tokens())
         parser.parse_tokens()
+        # print(parser.get_ast())
 
         for node in parser.get_ast():
             result = self.evaluator.evaluate(node)
