@@ -5,3 +5,5 @@
 - [x] Sequential Execution using "begin"
 - [ ] Recursion
 - [x] List data structure
+- [x] List - car functionality
+- [x] List - cdr functionality

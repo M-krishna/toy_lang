@@ -42,6 +42,8 @@ class TokenType(Enum):
     OR = "or"
     NOT = "not"
     LIST = "list"
+    CAR = "car"
+    CDR = "cdr"
     EOF = "eof"
 
 
@@ -172,6 +174,10 @@ class Lexer:
             self.add_token(TokenType.OR.name, text)
         elif text == TokenType.LIST.value:
             self.add_token(TokenType.LIST.name, text)
+        elif text == TokenType.CAR.value:
+            self.add_token(TokenType.CAR.name, text)
+        elif text == TokenType.CDR.name:
+            self.add_token(TokenType.CDR.name, text)
         else:
             self.add_token(TokenType.IDENTIFIER.name, text)
 
@@ -561,6 +567,12 @@ class Parser:
         if current_token.lexeme == TokenType.LIST.value:
             return self.parse_list()
 
+        if current_token.lexeme == TokenType.CAR.value:
+            return self.parse_car()
+
+        if current_token.lexeme == TokenType.CDR.value:
+            return self.parse_cdr()
+
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
             node: Node = self.parse_expressions()
@@ -789,7 +801,7 @@ class Parser:
             operands.append(operand)
 
         # Build the ConsCell list using the operands list(either recursively or iteratively)
-        cons_cell: ConsCell = self.build_cons_cell(operands)
+        cons_cell: ConsCell | EmptyListNode = self.build_cons_cell(operands)
 
         if not self.match(TokenType.RPAREN.name):
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
@@ -799,6 +811,28 @@ class Parser:
         if len(operands) == 0:
             return EmptyListNode()
         return ConsCell(operands[0], self.build_cons_cell(operands[1:]))
+
+    def parse_car(self):
+        self.advance() # consume the "car" token
+
+        _list: ConsCell = self.parse_expressions()
+        if isinstance(_list, EmptyListNode):
+            raise SyntaxError(f"Expected a list with atleast one value, got 0")
+        
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return _list.car
+
+    def parse_cdr(self):
+        self.advance() # consume the "car" token
+
+        _list: ConsCell = self.parse_expressions()
+        if isinstance(_list, EmptyListNode):
+            raise SyntaxError(f"Expected a list with atleast one value, got 0")
+
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return _list.cdr
 
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
