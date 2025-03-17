@@ -45,14 +45,14 @@ python3 main.py
 
 ## Language Features
 
-Arithmetic Operations
+**Arithmetic Operations**
 
 * Addition: `(+ 1 2 3)`
 * Subtraction: `(- 10 5)`
 * Multiplication: `(* 2 3 4)`
 * Division: `(/ 10 2)`
 
-Comparison Operators
+**Comparison Operators**
 
 * Less than: `(< 5 10)`
 * Greater than: `(> 10 5)`
@@ -60,14 +60,14 @@ Comparison Operators
 * Greater than or equal: `(>= 10 10)`
 
 
-Boolean Operations
+**Boolean Operations**
 
 * And: `(and #t #f)`
 * Or: `(or #t #f)`
 * Not: `(not #t)`
 
 
-Functions
+**Functions**
 
 ```lisp
 ; Define a function
@@ -79,7 +79,7 @@ Functions
   (square 5))
 ```
 
-List data structure
+**List data structure**
 
 ```lisp
 ; An empty list
@@ -113,7 +113,7 @@ my_list ; (1 2 3)
 my_list ; (1 2 (3 4) 5)
 ```
 
-Car and Cdr functions for list data structure
+**Car and Cdr functions for list data structure**
 
 ```lisp
 (car (list 1 2 3)) ; returns 1
