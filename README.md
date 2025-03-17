@@ -113,12 +113,31 @@ my_list ; (1 2 3)
 my_list ; (1 2 (3 4) 5)
 ```
 
-**Car and Cdr functions for list data structure**
+**Functions for list data structure**
 
 ```lisp
 (car (list 1 2 3)) ; returns 1
 
 (cdr (list 1 2 3)) ; returns (2 3)
+```
+
+**Cons for constructing pairs**
+
+```lisp
+(cons 1 2) ; (1 . 2)
+
+(cons 1 (cons 2 3)) ; (1 2 . 3)
+
+(cons 1 (list 2 3 4)) ; (1 2 3 4)
+
+(cons (list 1 2) 3) ; ((1 2) . 3)
+
+(define pair1 (cons 10 20))
+(define pair2 (cons 30 40))
+(define combined (cons pair1 pair2))
+combined ; ((10 . 20) . (30 . 40))
+(car combined) ; (10 . 20)
+(cdr combined) ; (30 . 40)
 ```
 
 ## Development

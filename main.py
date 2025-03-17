@@ -44,6 +44,7 @@ class TokenType(Enum):
     LIST = "list"
     CAR = "car"
     CDR = "cdr"
+    CONS = "cons"
     EOF = "eof"
 
 
@@ -459,7 +460,7 @@ class CdrNode(Node):
         return f"(CdrNode({self.list_expr}))"
 
 class ConsCell(Node):
-    def __init__(self, car: CarNode, cdr: CdrNode):
+    def __init__(self, car: Node, cdr: Node):
         self.car = car # the first element in the list
         self.cdr = cdr # the rest of the list (another ConsCell or nil)
     
@@ -599,6 +600,9 @@ class Parser:
 
         if current_token.lexeme == TokenType.CDR.value:
             return self.parse_cdr()
+
+        if current_token.lexeme == TokenType.CONS.value:
+            return self.parse_cons()
 
         elements: List = []
         while not self.is_at_end() and self.peek().tt != TokenType.RPAREN.name:
@@ -860,6 +864,24 @@ class Parser:
         if not self.match(TokenType.RPAREN.name):
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
         return CdrNode(_list)
+
+    def parse_cons(self):
+        self.advance() # consume the "cons" token
+
+        # operands can be of any type
+        operands = []
+        while self.peek().tt != TokenType.RPAREN.name:
+            operand = self.parse_expressions()
+            operands.append(operand)
+        
+        if len(operands) != 2: # cons will take only 2 operands (car and cdr)
+            raise SyntaxError(f"the expected number of arguments does not match the given number. Expected: 2 arguments")
+
+        cons_cell: ConsCell = ConsCell(operands[0], operands[1])
+
+        if not self.match(TokenType.RPAREN.name):
+            raise SyntaxError(f"Expected ')', got: {self.peek()}")
+        return cons_cell
 
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
