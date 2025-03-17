@@ -174,10 +174,6 @@ class Lexer:
             self.add_token(TokenType.OR.name, text)
         elif text == TokenType.LIST.value:
             self.add_token(TokenType.LIST.name, text)
-        elif text == TokenType.CAR.value:
-            self.add_token(TokenType.CAR.name, text)
-        elif text == TokenType.CDR.name:
-            self.add_token(TokenType.CDR.name, text)
         else:
             self.add_token(TokenType.IDENTIFIER.name, text)
 
@@ -254,6 +250,9 @@ class AtomNode(Node):
     def __init__(self, token_type: TokenType, value: str):
         self.type = token_type
         self.value = value
+    
+    def __str__(self):
+        return str(self.value)
 
     def __repr__(self):
         return f"AtomNode({self.type}, {self.value})"
@@ -439,13 +438,41 @@ class OrNode(Node):
     def __repr__(self):
         return f"OrNode({self.operands})"
 
+class CarNode(Node):
+    def __init__(self, list_expr):
+        self.list_expr = list_expr
+
+    def __str__(self):
+        return f"(car {self.list_expr})"
+    
+    def __repr__(self):
+        return f"(CarNode({self.list_expr}))"
+
+class CdrNode(Node):
+    def __init__(self, list_expr):
+        self.list_expr = list_expr
+
+    def __str__(self):
+        return f"(cdr {self.list_expr})"
+    
+    def __repr__(self):
+        return f"(CdrNode({self.list_expr}))"
+
 class ConsCell(Node):
-    def __init__(self, car, cdr):
+    def __init__(self, car: CarNode, cdr: CdrNode):
         self.car = car # the first element in the list
         self.cdr = cdr # the rest of the list (another ConsCell or nil)
     
     def __str__(self):
-        return f"({self.car} . {self.cdr})"
+        elements = []
+        current = self
+
+        while isinstance(current, ConsCell):
+            elements.append(str(current.car))
+            current = current.cdr
+        if not isinstance(current, EmptyListNode):
+            elements.append(". " + str(current))
+        return "(" + " ".join(elements) + ")"
     
     def __repr__(self):
         return f"ConsCell({self.car}, {self.cdr})"
@@ -815,24 +842,24 @@ class Parser:
     def parse_car(self):
         self.advance() # consume the "car" token
 
-        _list: ConsCell = self.parse_expressions()
+        _list: ConsCell | EmptyListNode = self.parse_expressions()
         if isinstance(_list, EmptyListNode):
             raise SyntaxError(f"Expected a list with atleast one value, got 0")
         
         if not self.match(TokenType.RPAREN.name):
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
-        return _list.car
+        return CarNode(_list)
 
     def parse_cdr(self):
-        self.advance() # consume the "car" token
+        self.advance() # consume the "cdr" token
 
-        _list: ConsCell = self.parse_expressions()
+        _list: ConsCell | EmptyListNode = self.parse_expressions()
         if isinstance(_list, EmptyListNode):
             raise SyntaxError(f"Expected a list with atleast one value, got 0")
 
         if not self.match(TokenType.RPAREN.name):
             raise SyntaxError(f"Expected ')', got: {self.peek()}")
-        return _list.cdr
+        return CdrNode(_list)
 
     ############### HELPER FUNCTIONS ###############
     def match(self, expected_token_type: TokenType) -> bool:
@@ -1012,17 +1039,17 @@ class Evaluator:
                     return BooleanNode(True)
             return BooleanNode(False)
         elif isinstance(ast, ConsCell):
-            car_value = self.evaluate(ast.car, env=env)
-
-            cdr_values = []
-            current = ast.cdr
-            while not isinstance(current, EmptyListNode):
-                cdr_values.append(self.evaluate(current.car, env=env))
-                current = current.cdr
-            result = tuple([car_value]) + tuple(cdr_values)
-            if len(result) == 0:
-                return tuple()
-            return f"({" ".join(str(e) for e in result)})"
+            return ast
+        elif isinstance(ast, CarNode):
+            r: ConsCell = self.evaluate(ast.list_expr, env=env)
+            if not isinstance(r, ConsCell):
+                raise SyntaxError(f"car expects a type of cons cell or non-empty list")
+            return self.evaluate(r.car, env=env)
+        elif isinstance(ast, CdrNode):
+            r: ConsCell = self.evaluate(ast.list_expr, env=env)
+            if not isinstance(r, ConsCell):
+                raise SyntaxError(f"cdr expects a type of cons cell or non-empty list")
+            return self.evaluate(r.cdr, env=env)
         elif isinstance(ast, EmptyListNode):
             return ast
         else:

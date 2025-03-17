@@ -11,6 +11,7 @@ A minimalist Scheme-like programming language interpreter written in Python. Thi
 - Conditional statements `(if)`
 - Local variable bindings
 - Comments support
+- List data structure
 
 ## Installation
 
@@ -37,6 +38,9 @@ python3 main.py
 (if (> 5 3)
     "yes"
     "no")
+
+; Strings
+"Hello World"
 ```
 
 ## Language Features
@@ -73,6 +77,48 @@ Functions
 (begin
   (define square (lambda (x) (* x x)))
   (square 5))
+```
+
+List data structure
+
+```lisp
+; An empty list
+(list)
+()
+
+; A list with single value
+(list 1)
+(1)
+
+(list "a")
+(a)
+
+; A list with multiple values
+(list 1 2 3 4 5 6 7 8)
+(1 2 3 4 5 6 7 8)
+
+(list "a" "b" "c")
+(a b c)
+
+; Nested list
+(list 1 (list 2 3) 4 5)
+(1 (2 3) 4 5)
+
+; Defining a list
+(define my_list (list 1 2 3))
+my_list ; (1 2 3)
+
+; Defining a nested list
+(define my_list (list 1 2 (list 3 4) 5))
+my_list ; (1 2 (3 4) 5)
+```
+
+Car and Cdr functions for list data structure
+
+```lisp
+(car (list 1 2 3)) ; returns 1
+
+(cdr (list 1 2 3)) ; returns (2 3)
 ```
 
 ## Development
