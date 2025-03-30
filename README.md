@@ -1,3 +1,5 @@
+![Toy lang](./assets/toy_lang.png)
+
 # Toy Language Interpreter
 
 A minimalist Scheme-like programming language interpreter written in Python. This project implements a custom programming language with support for basic arithmetic operations, conditionals, and functional programming concepts.
